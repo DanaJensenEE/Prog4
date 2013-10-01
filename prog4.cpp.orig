@@ -1,0 +1,249 @@
+/**************************************************************************//**
+ * @file
+ *
+ * @mainpage Program 4 - Printer Simulation
+ *
+ * @section course_section Course Information
+ *
+ * @authors Dana Jensen, Daniel Carney, Loyde Bjerke, Quaz
+ *
+ * @date April 28, 2013
+ *
+ * @par Instructor:
+ *        Roger Schrader
+ *
+ * @par Course:
+ *         CSC 250 - Section 1 - 10:00 am
+ *
+ * @par Location:
+ *         Classroom Building
+ *
+ * @section program_section Program Information
+ *
+ * @details This program will take a command line arguement when it is called
+ * and will check for their being a correct number of arguements by checking
+ * argc. The command line passed in is the user specified input puzzle file.
+ * This file contains the knights tour puzzles that are to be solved by this
+ * program. In the file there needs to be three ints that correspond to the
+ * size, starting row, and starting column, in that order. We open this file
+ * and create and open an output file to read in, solve and output each puzzle.
+ * Once given a board size and starting position we check these for a valid
+ * tour by the chess "knight" piece. A knight's tour is the knight making legal
+ * moves to every spot on the board once and only once. To do this we make an
+ * array that represents the board and using recursion move the knight from the
+ * starting location to an ending location that satisfies the knight's tour
+ * rules. This program uses bruteforce to find a solution for the tour via
+ * recursion by guessing the next possible move, starting from up and to the
+ * right and continuing clockwise through legal moves, and repeating the
+ * process from there.
+ *
+ * @section compile_section Compiling and Usage
+ *
+ * @par Compiling Instructions:
+ *      None
+ *
+ * @par Usage:
+   @verbatim
+   c:\prog2.exe
+   Average time in between Print Jobs >=31
+   Time to print 1 Page >0
+   "-r" for random seeding "-f" for file seeding
+   @endverbatim
+ *
+ * @section todo_bugs_modification_section Todo, Bugs, and Modifications
+ *
+ * @bug
+ *
+ * @todo Finish documenting with doxygen tags
+ *
+ * @par Modifications and Development Timeline:
+   @verbatim
+   Date          Modification
+   ------------  --------------------------------------------------------------
+   Apr 4, 2013   Began development. Wrote main, errors, openFilesandCheck,
+                 outputArray, outputFileName, solvePuzzle, allocatePuzzle,
+                 and deAlloc functions. Tested with 5x5, 6x6, and 7x7.
+                 Catches invalid starting locations, puzzles with no solutions,
+                 lack of memory for puzzles, and file failures.
+
+   @endverbatim
+ *
+ *****************************************************************************/
+
+#include "queue.h"
+using namespace std;
+
+//Function prototypes
+bool generateDocument ( document &doc, char *argv[], int &prevTime, 
+						queue<document> &q1 );
+int getArrival ( int prevTime, char *argv[] );
+int getPages ( char *argv[] );
+unsigned int randPage();
+unsigned int randArrival ( char *argv[] );
+unsigned int filePage();
+unsigned int fileArrival ( char *argv[] );
+
+//Static Files
+static ifstream finPage;
+static ifstream finTime;
+static ofstream fout ( "output.txt" );
+
+//Need to Shrink Main
+int main ( int argc, char *argv[] )
+{
+    if ( argc != 4 )
+    {
+		cout<<"Incorrect Usage Prog4.exe"; 
+		cout<<" #AvgJobTime #TimeToPrintPage \"-r\"/\"-f\"";
+        return 1;
+    }
+    int item;
+    int idleTime = 0;
+    int documents = 0;
+    int option;
+    int time = 0;
+    int left_in_queue = 0;
+    int print_time = atoi ( argv[2] );
+    int pages = 0;
+    int prevTime = 0;
+    queue<document> q1;
+    document printingDoc, doc;
+    finPage.open ( "pages.rand" );
+    finTime.open ( "arrival.rand" );
+
+    printingDoc.pages = 0;
+
+    while ( time <= 28800 )
+    {
+        if ( prevTime < 28800 && time >= prevTime )
+        {
+            generateDocument ( doc, argv, prevTime, q1 );
+            q1.enque ( doc );
+        }
+        if ( time == 0 )
+            q1.front ( printingDoc );
+        if ( printingDoc.time_end_printing == time )
+            q1.front ( printingDoc );
+        if ( printingDoc.time_arrived <= time 
+			 && printingDoc.time_end_printing == 0 )
+        {
+            documents++;
+            q1.deque ( printingDoc );
+            printingDoc.time_dequed = time;
+            printingDoc.time_started_print = time;
+            printingDoc.time_end_printing = time + ( printingDoc.pages * print_time );
+
+            fout << documents << ": ";
+            fout << "Pages: " << printingDoc.pages << " ";
+            fout << "Arrival: " << printingDoc.time_arrived << " ";
+            fout << "Start P: " << printingDoc.time_started_print << " ";
+            fout << "End P: " << printingDoc.time_end_printing << " ";
+            fout << "Cur Idle:" << idleTime << " ";
+            fout << endl;
+        }
+
+        if ( printingDoc.time_arrived > time )
+            idleTime++;
+
+        time++;
+    }
+
+    while ( q1.deque ( doc ) )
+        left_in_queue++;
+
+    //Stats Show
+    cout << "Seconds bewtween documents arrival: " << argv[1] << endl;
+    cout << "Seconds to print a page:            " << argv[2] << endl;
+    cout << "Number of documents Printed:        " << documents << endl;
+    cout << "Seconds of idle time:               " << idleTime << endl;
+    cout << "Number of documents still in Queue: " << left_in_queue << endl;
+    system ( "pause" );
+    return 0;
+}
+bool generateDocument ( document &doc, char *argv[], int &prevTime, queue<document> &q1 )
+{
+    int pages;
+    int arrivalTime;
+    arrivalTime = getArrival ( prevTime, argv );
+    prevTime = arrivalTime;
+    pages = getPages ( argv );
+    doc.pages = pages;
+    doc.time_arrived = arrivalTime;
+    doc.time_dequed = 0;
+    doc.time_started_print = 0;
+    doc.time_end_printing = 0;
+    return true;
+}
+int getArrival ( int prevTime, char *argv[] )
+{
+    int time;
+    int average;
+    string s;
+    s = argv[3];
+    average = atoi ( argv[1] );
+    if ( s == "-r" || s == "-R" )
+        time = randArrival ( argv );
+    if ( s == "-f" || s == "-F" )
+        time = fileArrival ( argv );
+
+    //Looking for error
+    if ( time > ( average + 30 ) )
+        fout << "Too long since last file " << time << endl;
+    if ( time < ( average - 30 ) )
+        fout << "Too short since last file " << time << endl;
+    time += prevTime;
+    return time;
+}
+int getPages ( char *argv[] )
+{
+    int page;
+    string s;
+    s = argv[3];
+    if ( s == "-r" || s == "-R" )
+        page = randPage();
+    if ( s == "-f" || s == "-F" )
+        page = filePage();
+
+    //Looking for errors in page #
+    if ( page > 25 )
+        fout << "Too Many Pages " << page << endl;
+    if ( page < 15 )
+        fout << "Too Few Pages " << page << endl;
+    return page;
+}
+unsigned int randPage()
+{
+    unsigned int page;
+    page = rand();
+    page = page % ( 25 + 1 );
+    page = page + 15;
+    return page;
+}
+unsigned int randArrival ( char *argv[] )
+{
+    unsigned int time;
+    int average;
+    average = atoi ( argv[1] );
+    time = rand();
+    time = time % ( 60 + 1 );
+    time = time + average - 30;
+    return time;
+}
+unsigned int filePage()
+{
+    unsigned int page;
+    finPage >> page;
+    page = page % ( 10 + 1 );
+    page = page + 15;
+    return page;
+}
+unsigned int fileArrival ( char *argv[] )
+{
+    unsigned int time;
+    int average;
+    average = atoi ( argv[1] );
+    finTime >> time;
+    time = time % ( 60 + 1 );
+    time = time + average - 30;
+    return time;
+}

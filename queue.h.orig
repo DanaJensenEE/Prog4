@@ -1,0 +1,102 @@
+/**************************************************************************//**
+* @file
+ *****************************************************************************/
+/**************************************************************************//**
+Author: Dana Jensen, Daniel Carney
+Date: March 25, 2013
+Teacher: Roger Schrader
+Program Description
+ *****************************************************************************/
+#include <iostream>
+#include <list>
+#include <iomanip>
+#include <string>
+#include <cstring>
+#include <algorithm>
+#include <cmath>
+#include <iostream>
+#include <vector>
+#include <fstream>
+#include <conio.h>
+#include <Windows.h>
+#include <direct.h>
+#include <io.h>
+
+/*!
+ * @brief structure that follows is used to store the tags of an mp3 File.
+ */
+struct document
+{
+	int pages;				//Number of page in Document
+	int time_arrived;		//Number of seconds from start of day
+	int time_dequed;		//
+	int time_started_print; //
+	int time_end_printing;	//
+};
+
+template <class _TY>
+class queue
+{
+	public:
+		queue();
+		~queue();
+
+		bool enque(_TY item);
+		bool deque(_TY &item);
+		bool front(_TY &item);
+
+		void print_q();
+		bool is_empty();
+
+	private:
+		std::list< _TY> myqueue;
+};
+
+template <class _TY> 
+queue<_TY>::queue()
+{
+}
+
+template <class _TY>
+queue<_TY>::~queue()
+{
+
+}
+
+template <class _TY>
+bool queue<_TY>::enque(_TY item)
+{
+	int count;
+	count = myqueue.size();
+	myqueue.push_back(item);
+	if(myqueue.size() == count+1)
+		return 1;
+	return 0;
+}
+
+template <class _TY>
+bool queue<_TY>::deque(_TY &item)
+{
+	if(myqueue.size() == 0)
+		return 0;
+	item=*myqueue.begin();
+	myqueue.pop_front();
+	return 1;
+}
+
+template <class _TY>
+bool queue<_TY>::front(_TY &item)
+{
+	if(myqueue.size()==0)
+		return 0;
+	item=*myqueue.begin();
+	return 1;
+}
+
+template <class _TY>
+bool queue<_TY>::is_empty()
+{
+	if(myqueue.size()==0)
+		return(1);
+		return(0);
+}
